@@ -308,31 +308,25 @@ if nav == "🏠 Home & Predict":
     </div>""", unsafe_allow_html=True)
 
   # ── STEP 0 — LOGIN & SYNC ─────────────────────────────
-    if st.session_state.step == 0:
-        st.markdown("<div class='step-box'><div class='step-title'>🔐 STUDENT PORTAL LOGIN</div><div class='step-sub'>MITS Students: Login with LDAP to sync attendance automatically</div></div>", unsafe_allow_html=True)
-        c1,c2,c3 = st.columns([1,2,1])
-        with c2:
-            name_in = st.text_input("👤 Full Name", placeholder="e.g. Vaibhav Singh Saroniya", key="name_in")
-            email_in = st.text_input("📧 Institute Email / LDAP", placeholder="24ai10va73@mitsgwl.ac.in", key="email_in")
-            
-            is_mits = "mitsgwl.ac.in" in email_in.lower() or (len(email_in) > 5 and email_in.isalnum())
-            pwd_in = st.text_input("🔑 MITS AMS Password", type="password") if is_mits else ""
-
-            if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
+    if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
                 if name_in and email_in:
+                    # 1. Parse any email (MITS, IIT, Gmail, etc.)
                     inst, roll, cleaned = parse_email(email_in)
                     st.session_state.name, st.session_state.email = name_in, cleaned
                     st.session_state.institute, st.session_state.roll = inst, roll
 
+                    # 2. ONLY attempt Sync if it's MITS + Password is provided
                     if is_mits and pwd_in:
                         with st.spinner("🔄 Syncing with MITS AMS..."):
-                            # This calls the engine you added earlier
                             success, attendance = sync_mits_ams(email_in.split('@')[0], pwd_in)
                             if success:
                                 st.session_state.attendance = attendance
-                                st.session_state.step = 2
+                                st.session_state.step = 2 # Jump to Study Hours
                                 st.rerun()
+                            else:
+                                st.warning("⚠️ AMS Login failed. Please enter manually.")
                     
+                    # 3. FALLBACK: Move to Step 1 (Manual) for everyone else
                     st.session_state.step = 1
                     st.rerun()
 
