@@ -319,11 +319,40 @@ if nav == "🏠 Home & Predict":
             is_mits = "mitsgwl.ac.in" in email_in.lower() or (len(email_in) > 5 and email_in.isalnum())
             pwd_in = st.text_input("🔑 MITS AMS Password", type="password", help="Your password is NOT stored. It is only used to sync with the portal.") if is_mits else ""
 
-            if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
-                if name_in and email_in:
+          if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
+                # 1. First, check if inputs are empty
+                if not name_in or not email_in:
+                    st.error("⚠️ Name and LDAP/Email are required!")
+                else:
+                    # 2. Parse the email safely
                     inst, roll, cleaned = parse_email(email_in)
-                    st.session_state.name, st.session_state.email = name_in, cleaned
-                    st.session_state.institute, st.session_state.roll = inst, roll
+                    
+                    if not inst:
+                        st.error("⚠️ Invalid email format!")
+                    else:
+                        # 3. Save basic info to session state
+                        st.session_state.name = name_in
+                        st.session_state.email = cleaned
+                        st.session_state.institute = inst
+                        st.session_state.roll = roll
+
+                        # 4. Trigger the Sync if it's a MITS student with a password
+                        if is_mits and pwd_in:
+                            with st.spinner("🔄 Authenticating with MITS AMS..."):
+                                success, attendance = sync_mits_ams(email_in.split('@')[0], pwd_in)
+                                if success:
+                                    st.session_state.attendance = attendance
+                                    st.success(f"✅ Verified! Attendance synced: {attendance}%")
+                                    time.sleep(1)
+                                    st.session_state.step = 2 # Jump to Study Hours
+                                    st.rerun()
+                                else:
+                                    st.warning("⚠️ AMS Login failed. Please enter attendance manually.")
+                        
+                        # 5. Move to next step (Step 1 for manual or Step 2 if sync worked)
+                        if st.session_state.step == 0:
+                            st.session_state.step = 1
+                        st.rerun()
 
                     if is_mits and pwd_in:
                         with st.spinner("🔄 Syncing with MITS AMS..."):
