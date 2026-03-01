@@ -307,26 +307,37 @@ if nav == "🏠 Home & Predict":
         📍 {labels[min(st.session_state.step,3)]} &nbsp;|&nbsp; Step {st.session_state.step+1} of 4
     </div>""", unsafe_allow_html=True)
 
-  # ── STEP 0 — LOGIN & SYNC ─────────────────────────────
-    if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
+ # ── STEP 0 — LOGIN & SYNC ─────────────────────────────
+    if st.session_state.step == 0:
+        st.markdown("<div class='step-box'><div class='step-title'>🔐 STUDENT PORTAL LOGIN</div><div class='step-sub'>MITS Students: Login with LDAP to sync attendance automatically</div></div>", unsafe_allow_html=True)
+        c1,c2,c3 = st.columns([1,2,1])
+        with c2:
+            name_in = st.text_input("👤 Full Name", placeholder="e.g. Vaibhav Singh Saroniya", key="name_in")
+            email_in = st.text_input("📧 Institute Email / LDAP", placeholder="24ai10va73@mitsgwl.ac.in", key="email_in")
+            
+            # This logic hides the password box for non-MITS users
+            is_mits = "mitsgwl.ac.in" in email_in.lower() or (len(email_in) > 5 and email_in.isalnum())
+            pwd_in = st.text_input("🔑 MITS AMS Password", type="password") if is_mits else ""
+
+            if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
                 if name_in and email_in:
-                    # 1. Parse any email (MITS, IIT, Gmail, etc.)
+                    # 1. Parse details for everyone (MITS or Guest)
                     inst, roll, cleaned = parse_email(email_in)
                     st.session_state.name, st.session_state.email = name_in, cleaned
                     st.session_state.institute, st.session_state.roll = inst, roll
 
-                    # 2. ONLY attempt Sync if it's MITS + Password is provided
+                    # 2. Only attempt MITS AMS Sync if it's a MITS user with a password
                     if is_mits and pwd_in:
                         with st.spinner("🔄 Syncing with MITS AMS..."):
                             success, attendance = sync_mits_ams(email_in.split('@')[0], pwd_in)
                             if success:
                                 st.session_state.attendance = attendance
-                                st.session_state.step = 2 # Jump to Study Hours
+                                st.session_state.step = 2 # SKIP to Study Hours
                                 st.rerun()
                             else:
                                 st.warning("⚠️ AMS Login failed. Please enter manually.")
                     
-                    # 3. FALLBACK: Move to Step 1 (Manual) for everyone else
+                    # 3. FALLBACK: Guests and failed syncs go to the manual slider
                     st.session_state.step = 1
                     st.rerun()
 
