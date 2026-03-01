@@ -215,6 +215,21 @@ nav = st.sidebar.selectbox("", [
     "🗄️ Database",
     "ℹ️ About"
 ])
+# --- MITS AMS COLLEGE PORTAL LINK ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("<div style='color:#88aacc;font-size:12px;font-family:Orbitron,monospace;letter-spacing:1px;'>COLLEGE PORTAL</div>", unsafe_allow_html=True)
+
+# This creates a stylish link that looks like a button
+st.sidebar.markdown("""
+    <a href="https://ams.mitsgwalior.in/student/dashboard" target="_blank" style="text-decoration: none;">
+        <div style="background: linear-gradient(135deg, #00d4ff22, #0066ff22); 
+                    border: 1px solid #00d4ff; color: #00d4ff; 
+                    padding: 10px; border-radius: 10px; text-align: center; 
+                    font-family: 'Orbitron', monospace; font-size: 12px; margin-top: 5px;">
+            📋 OPEN MITS AMS
+        </div>
+    </a>
+""", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 df_s = get_all()
