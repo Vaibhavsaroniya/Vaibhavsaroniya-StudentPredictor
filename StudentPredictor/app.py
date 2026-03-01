@@ -5,7 +5,15 @@ import sqlite3
 import pandas as pd
 import time
 import re
-
+import streamlit as st
+import pickle
+import numpy as np
+import sqlite3
+import pandas as pd
+import time
+import re
+import requests
+from bs4 import BeautifulSoup
 st.set_page_config(
     page_title="Student Performance Prediction System",
     page_icon="🎓",
@@ -174,6 +182,30 @@ def parse_email(email):
     email = email.strip().lower()
     if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
         return None, None, None
+        # ── MITS AMS SYNC ENGINE ──────────────────────────────────
+def sync_mits_ams(username, password):
+    login_url = "https://ams.mitsgwalior.in/login"
+    dashboard_url = "https://ams.mitsgwalior.in/student/dashboard"
+    
+    with requests.Session() as s:
+        try:
+            # Attempt to login to the portal
+            login_payload = {'username': username, 'password': password}
+            s.post(login_url, data=login_payload, timeout=7)
+            
+            # Navigate to the dashboard to find attendance
+            response = s.get(dashboard_url, timeout=7)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                # This finds the attendance percentage on the page
+                # NOTE: Verify the 'pct' class name on the actual AMS site
+                attendance_element = soup.find("span", {"class": "pct"})
+                if attendance_element:
+                    pct = int(attendance_element.text.replace("%", "").strip())
+                    return True, pct
+        except:
+            return False, None
+    return False, None
 
     # MITS Gwalior pattern: 24ai10va73@mitsgwl.ac.in
     mits_match = re.match(r'^(\d{2})([a-z]+)(\d+)([a-z]+)(\d+)@mitsgwl\.ac\.in$', email)
@@ -275,13 +307,36 @@ if nav == "🏠 Home & Predict":
         📍 {labels[min(st.session_state.step,3)]} &nbsp;|&nbsp; Step {st.session_state.step+1} of 4
     </div>""", unsafe_allow_html=True)
 
-    # ── STEP 0 — NAME + EMAIL ─────────────────────────────
+   # ── STEP 0 — LOGIN & SYNC ─────────────────────────────
     if st.session_state.step == 0:
-        st.markdown("<div class='step-box'><div class='step-title'>📝 STUDENT REGISTRATION</div><div class='step-sub'>Enter your name and institute email to begin</div></div>", unsafe_allow_html=True)
+        st.markdown("<div class='step-box'><div class='step-title'>🔐 STUDENT PORTAL LOGIN</div><div class='step-sub'>MITS Students: Login with LDAP to sync attendance automatically</div></div>", unsafe_allow_html=True)
         c1,c2,c3 = st.columns([1,2,1])
         with c2:
             name_in = st.text_input("👤 Full Name", placeholder="e.g. Vaibhav Singh Saroniya", key="name_in")
-            email_in = st.text_input("📧 Institute Email", placeholder="e.g. 24ai10va73@mitsgwl.ac.in", key="email_in")
+            email_in = st.text_input("📧 Institute Email / LDAP", placeholder="24ai10va73@mitsgwl.ac.in", key="email_in")
+            
+            # Identify if it's a MITS student to show the password field
+            is_mits = "mitsgwl.ac.in" in email_in.lower() or (len(email_in) > 5 and email_in.isalnum())
+            pwd_in = st.text_input("🔑 MITS AMS Password", type="password", help="Your password is NOT stored. It is only used to sync with the portal.") if is_mits else ""
+
+            if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
+                if name_in and email_in:
+                    inst, roll, cleaned = parse_email(email_in)
+                    st.session_state.name, st.session_state.email = name_in, cleaned
+                    st.session_state.institute, st.session_state.roll = inst, roll
+
+                    if is_mits and pwd_in:
+                        with st.spinner("🔄 Syncing with MITS AMS..."):
+                            success, attendance = sync_mits_ams(email_in.split('@')[0], pwd_in)
+                            if success:
+                                st.session_state.attendance = attendance
+                                st.session_state.step = 2 # SKIP step 1 (manual slider) and go to Study Hours!
+                                st.rerun()
+                            else:
+                                st.warning("⚠️ AMS Login failed. Please enter attendance manually.")
+                    
+                    st.session_state.step = 1 # Fallback to manual attendance if sync fails or not MITS
+                    st.rerun()
 
             # Live email preview
             if email_in:
