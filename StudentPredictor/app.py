@@ -165,7 +165,9 @@ def get_all():
     conn.close(); return df
 
 create_db()
-model = pickle.load(open(r"C:\JAVA\StudentPredictor\model.pkl","rb"))
+# This works on both your PC and the Streamlit Cloud server
+model = pickle.load(open("StudentPredictor/model.pkl", "rb"))
+DB = "StudentPredictor/students.db"
 
 # ── EMAIL PARSER ──────────────────────────────────────────
 def parse_email(email):
