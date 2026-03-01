@@ -307,7 +307,7 @@ if nav == "🏠 Home & Predict":
         📍 {labels[min(st.session_state.step,3)]} &nbsp;|&nbsp; Step {st.session_state.step+1} of 4
     </div>""", unsafe_allow_html=True)
 
- # ── STEP 0 — LOGIN & SYNC ─────────────────────────────
+# ── STEP 0 — LOGIN & SYNC ─────────────────────────────
     if st.session_state.step == 0:
         st.markdown("<div class='step-box'><div class='step-title'>🔐 STUDENT PORTAL LOGIN</div><div class='step-sub'>MITS Students: Login with LDAP to sync attendance automatically</div></div>", unsafe_allow_html=True)
         c1,c2,c3 = st.columns([1,2,1])
@@ -319,6 +319,7 @@ if nav == "🏠 Home & Predict":
             is_mits = "mitsgwl.ac.in" in email_in.lower() or (len(email_in) > 5 and email_in.isalnum())
             pwd_in = st.text_input("🔑 MITS AMS Password", type="password") if is_mits else ""
 
+            # Use ONLY ONE button to avoid session conflicts
             if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
                 if name_in and email_in:
                     # 1. Parse details for everyone (MITS or Guest)
@@ -337,10 +338,11 @@ if nav == "🏠 Home & Predict":
                             else:
                                 st.warning("⚠️ AMS Login failed. Please enter manually.")
                     
-                    # 3. FALLBACK: Guests and failed syncs go to the manual slider
+                    # 3. FALLBACK: Guests and failed syncs go to the manual slider (Step 1)
                     st.session_state.step = 1
                     st.rerun()
-
+                else:
+                    st.error("⚠️ Please enter your name and institute email!")
             # Live email preview
             if email_in:
                 inst, roll, cleaned = parse_email(email_in)
