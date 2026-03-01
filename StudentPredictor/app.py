@@ -206,11 +206,13 @@ def sync_mits_ams(username, password):
     dashboard_url = "https://ams.mitsgwalior.in/student/dashboard"
     with requests.Session() as s:
         try:
+            # Login Attempt
             s.post(login_url, data={'username': username, 'password': password}, timeout=7)
+            # Fetch Attendance
             response = s.get(dashboard_url, timeout=7)
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
-                # NOTE: Ensure 'pct' is the correct class on the AMS site
+                # Note: Verify if 'pct' is still the class on the actual site
                 attendance_element = soup.find("span", {"class": "pct"})
                 if attendance_element:
                     pct = int(attendance_element.text.replace("%", "").strip())
@@ -218,7 +220,6 @@ def sync_mits_ams(username, password):
         except:
             return False, None
     return False, None
-
     # MITS Gwalior pattern: 24ai10va73@mitsgwl.ac.in
     mits_match = re.match(r'^(\d{2})([a-z]+)(\d+)([a-z]+)(\d+)@mitsgwl\.ac\.in$', email)
     if mits_match:
@@ -327,28 +328,33 @@ if nav == "🏠 Home & Predict":
             name_in = st.text_input("👤 Full Name", placeholder="e.g. Vaibhav Singh Saroniya", key="name_in")
             email_in = st.text_input("📧 Institute Email / LDAP", placeholder="24ai10va73@mitsgwl.ac.in", key="email_in")
             
+            # Show password field ONLY for MITS Students
             is_mits = "mitsgwl.ac.in" in email_in.lower() or (len(email_in) > 5 and email_in.isalnum())
             pwd_in = st.text_input("🔑 MITS AMS Password", type="password") if is_mits else ""
 
-            # Unified Button: Handles MITS Sync AND Guest Login
+            # Unified Action Button for MITS and Guests
             if st.button("LOGIN & SYNC DATA 🚀", use_container_width=True):
                 if name_in and email_in:
+                    # Fix: Call parse_email INSIDE the button click to avoid TypeError
                     inst, roll, cleaned = parse_email(email_in)
+                    
                     if inst:
                         st.session_state.name, st.session_state.email = name_in, cleaned
                         st.session_state.institute, st.session_state.roll = inst, roll
 
+                        # MITS Path: Try Auto-Sync
                         if is_mits and pwd_in:
                             with st.spinner("🔄 Syncing with MITS AMS..."):
                                 success, attendance = sync_mits_ams(email_in.split('@')[0], pwd_in)
                                 if success:
                                     st.session_state.attendance = attendance
-                                    st.session_state.step = 2 # SKIP to Study Hours
+                                    st.session_state.step = 2 # Jump directly to Study Hours
                                     st.rerun()
                                 else:
-                                    st.warning("⚠️ AMS Login failed. Please enter manually.")
+                                    st.warning("⚠️ AMS Sync failed. Please enter manually.")
                         
-                        st.session_state.step = 1 # Go to manual slider
+                        # Guest/Fallback Path: Go to manual attendance slider
+                        st.session_state.step = 1
                         st.rerun()
                     else:
                         st.error("⚠️ Invalid email format!")
